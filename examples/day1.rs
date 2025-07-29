@@ -1032,13 +1032,7 @@ fn solve_part2() {
     let (first_group, second_group) = parse_input();
     let result = first_group
         .into_iter()
-        .map(|x| {
-            x * (second_group
-                .iter()
-                .filter(|y| y == &&x)
-                .collect::<Vec<&_>>()
-                .len() as i32)
-        })
+        .map(|x| x * (second_group.iter().filter(|y| y == &&x).count() as i32))
         .reduce(|acc, x| acc + x)
         .unwrap();
     println!("PART 2: {result}");
