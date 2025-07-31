@@ -1,4 +1,6 @@
-const INPUT: &'static str = include_str!("../data/02.txt");
+use aoc2024::RawData;
+
+const INPUT: RawData = include_str!("../data/02.txt");
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum Order {

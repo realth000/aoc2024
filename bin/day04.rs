@@ -1,6 +1,8 @@
-const INPUT: &'static str = include_str!("../data/04.txt");
+use aoc2024::RawData;
 
-fn solve_part1(input: &'static str) -> i32 {
+const INPUT: RawData = include_str!("../data/04.txt");
+
+fn solve_part1(input: RawData) -> i32 {
     let width = input.find('\n').unwrap();
     let height = input.chars().filter(|x| x == &'\n').count() + 1;
 
@@ -115,7 +117,7 @@ fn solve_part1(input: &'static str) -> i32 {
     count
 }
 
-fn solve_part2(input: &'static str) -> i32 {
+fn solve_part2(input: RawData) -> i32 {
     let width = input.find('\n').unwrap();
     let height = input.chars().filter(|x| x == &'\n').count() + 1;
 
@@ -160,7 +162,7 @@ fn solve_part2(input: &'static str) -> i32 {
 mod tests {
     use super::*;
 
-    const INPUT: &'static str = r#"MMMSXXMASM
+    const INPUT: RawData = r#"MMMSXXMASM
 MSAMXMSMSA
 AMXSXMAAMM
 MSAMASMSMX

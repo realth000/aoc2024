@@ -1,4 +1,6 @@
-const INPUT: &'static str = include_str!("../data/03.txt");
+use aoc2024::RawData;
+
+const INPUT: RawData = include_str!("../data/03.txt");
 
 #[derive(Debug, Clone)]
 struct MulStmt {
@@ -113,8 +115,8 @@ fn solve() {
             DoState::LPar if ch == ')' => {
                 state.enabled = true;
                 state.reset_do();
-            },
-            _ => state.reset_do()
+            }
+            _ => state.reset_do(),
         }
 
         match state.do_not_state.clone() {
@@ -127,10 +129,9 @@ fn solve() {
             DoNotState::LPar if ch == ')' => {
                 state.enabled = false;
                 state.reset_do_not()
-            },
-            _ => state.reset_do_not()
+            }
+            _ => state.reset_do_not(),
         }
-
 
         match state.state.clone() {
             StmtState::None if ch == 'm' => state.update_state(StmtState::M),

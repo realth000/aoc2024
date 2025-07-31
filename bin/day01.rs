@@ -1,4 +1,6 @@
-const INPUT: &'static str = include_str!("../data/01.txt");
+use aoc2024::RawData;
+
+const INPUT: RawData = include_str!("../data/01.txt");
 
 fn parse_input() -> (Vec<i32>, Vec<i32>) {
     // Parse into two groups of number.
