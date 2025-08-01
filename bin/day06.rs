@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, hash::Hash};
 
 use aoc2024::RawData;
 
@@ -83,7 +83,10 @@ mod state {
                         return StopResult::StuckInLoop;
                     }
                     self.turn_right();
-                    self.step_forward();
+                    // This is the key of turning direction:
+                    // No one promise we can step forward after turn right.
+                    // Do the next round instead of defaultly step forward.
+                    return StopResult::NotStopped;
                 }
                 Item::Edge => return StopResult::ReachTheEdge,
             }
@@ -198,7 +201,6 @@ mod state {
             };
 
             if !self.paths.insert(path.clone()) {
-                // println!(">>> collide: {:?}", path);
                 return false;
             }
             self.last_pos = Some(pos);
@@ -214,26 +216,24 @@ mod state {
 fn solve_part1(input: &str) -> Option<HashSet<Position>> {
     let width = input.find('\n').unwrap();
     let height = input.chars().filter(|x| x == &'\n').count() + 1;
-    let start_idx = input
-        .chars()
-        .filter(|x| x != &'\n')
-        .position(|x| x == '^')
-        .unwrap();
 
     let world = input
         .split("\n")
         .map(|x| x.chars().collect::<Vec<char>>())
         .collect::<Vec<Vec<char>>>();
 
+    let start_idx = world
+        .iter()
+        .enumerate()
+        .find_map(|(idx, line)| line.iter().position(|x| x == &'^').map(|p| p + idx * width))
+        .unwrap();
+
     assert_eq!(width, height);
 
     let start_position = Position {
         x: start_idx / width,
-        y: start_idx % height,
+        y: start_idx % width,
     };
-
-    // 130x130
-    assert_eq!(width, height);
 
     let mut all_poses = HashSet::new();
     let mut state = state::State::new(start_position, world);
@@ -252,28 +252,45 @@ fn solve_part2(input: RawData) -> usize {
     let positions = solve_part1(input).unwrap();
 
     let width = input.find('\n').unwrap();
-    let orig_input = input;
-    let world = orig_input
-        .chars()
-        .filter(|x| x != &'\n')
+    let height = input.chars().filter(|x| x == &'\n').count() + 1;
+    assert_eq!(width, height);
+
+    let world = input
+        .split('\n')
+        .map(|x| x.chars().collect::<Vec<_>>())
         .collect::<Vec<_>>();
 
+    let start_idx = world
+        .iter()
+        .enumerate()
+        .find_map(|(idx, line)| line.iter().position(|x| x == &'^').map(|p| p + idx * width))
+        .unwrap();
+
+    let start_position = Position {
+        x: start_idx / width,
+        y: start_idx % width,
+    };
+
     for pos in positions {
-        let idx = pos.x * width + pos.y;
-        let ch = &world[idx];
-        if ch == &'#' || ch == &'^' || ch == &'\n' {
-            // println!(">>> skip++");
+        let ch = &world[pos.x][pos.y];
+        if ch == &'^' {
             continue;
         }
 
-        // Try if stuck.
-        let mut curr_input = orig_input.to_string();
-        curr_input.replace_range((idx + pos.x)..(idx + pos.x + 1), "#");
-        if let None = solve_part1(&curr_input) {
-            // println!(">>> count++ {pos:?}");
-            count += 1;
-        } else {
-            // println!(">>> skip++");
+        let mut curr_world = world.clone();
+        curr_world[pos.x][pos.y] = '#';
+
+        let mut all_poses = &mut HashSet::new();
+        let mut state = state::State::new(start_position.clone(), curr_world);
+        loop {
+            match state.produce_position(&mut all_poses) {
+                StopResult::NotStopped => continue,
+                StopResult::ReachTheEdge => break,
+                StopResult::StuckInLoop => {
+                    count += 1;
+                    break;
+                }
+            }
         }
     }
 
