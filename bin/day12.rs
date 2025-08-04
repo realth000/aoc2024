@@ -6,100 +6,104 @@ type CostMap<'a> = Vec<Area<'a>>;
 const INPUT: RawData = include_str!("../data/12.txt");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+enum Direction {
+    Left,
+    Up,
+    Right,
+    Down,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BorderPoint {
+    x: usize,
+    y: usize,
+    direction: Direction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Area<'a> {
     points: Vec<Position<'a>>,
-    perimeter: usize,
+    borders: Vec<BorderPoint>,
 }
 
 impl<'a> Area<'a> {
-    fn new(pos: Position<'a>, perimeter: usize) -> Self {
+    fn new(pos: Position<'a>, borders: Vec<BorderPoint>) -> Self {
         Self {
             points: vec![pos],
-            perimeter,
+            borders,
         }
     }
 
-    fn add_point(&mut self, pos: Position<'a>, perimeter: usize) {
+    fn add_point(&mut self, pos: Position<'a>, borders: &Vec<BorderPoint>) {
         self.points.push(pos);
-        self.perimeter += perimeter;
+        self.borders.append(&mut borders.clone());
     }
 
     fn combine(&mut self, other: &mut Self) {
         self.points.append(&mut other.points);
-        self.perimeter += other.perimeter;
+        self.borders.append(&mut other.borders);
     }
 
     fn cost(&self) -> usize {
-        self.points.len() * self.perimeter
+        self.points.len() * self.borders.len()
     }
 
     fn cost_with_side(&self, world_width: usize, world_height: usize) -> usize {
-        let mut x_side = 0;
-        let mut y_side = 0;
-
-        for x in 0..world_height {
-            let ys = self
-                .points
-                .iter()
-                .filter(|pos| pos.x == x)
-                .map(|pos| pos.y)
-                .collect::<Vec<_>>();
-
-            if ys.is_empty() {
-                continue;
-            }
-
-            let mut counting = true;
-            for y in 0..world_width {
-                if ys.contains(&y) {
-                    counting = true;
-                } else {
-                    if counting {
-                        y_side += 1;
-                        counting = false;
-                    }
-                }
-            }
-        }
+        let mut sum = 0;
 
         for y in 0..world_width {
-            let xs = self
-                .points
+            let mut test_line = " ".repeat(world_width).chars().collect::<Vec<_>>();
+            for xs in self
+                .borders
                 .iter()
                 .filter(|pos| pos.y == y)
                 .map(|pos| pos.x)
-                .collect::<Vec<_>>();
-
-            if xs.is_empty() {
-                continue;
+            {
+                test_line[xs] = '1';
             }
 
-            let mut counting = true;
-            for x in 0..world_height {
-                if xs.contains(&x) {
-                    counting = true;
-                } else {
-                    if counting {
-                        x_side += 1;
-                        counting = false;
-                    }
-                }
-            }
+            test_line.dedup();
+            println!(">>> {} x-axis({}): {:?}", self.points[0].ch, y, test_line);
+            sum += test_line
+                .iter()
+                .collect::<String>()
+                .trim()
+                .split(' ')
+                .count();
         }
+        let w = sum.clone();
+
+        for x in 0..world_height {
+            let mut test_line = " ".repeat(world_height).chars().collect::<Vec<_>>();
+            for ys in self
+                .borders
+                .iter()
+                .filter(|pos| pos.x == x)
+                .map(|pos| pos.y)
+            {
+                test_line[ys] = '1';
+            }
+
+            test_line.dedup();
+            println!(">>> {} y-axis({}): {:?}", self.points[0].ch, x, test_line);
+            sum += test_line
+                .iter()
+                .collect::<String>()
+                .trim()
+                .split(' ')
+                .count();
+        }
+
         println!(
-            ">>> [size] {}, {} * ({} + {}) = {}",
+            ">>> {}, {} * ({} + {}) = {}",
             self.points[0].ch,
             self.points.len(),
-            x_side,
-            y_side,
-            self.points.len() * (x_side + y_side),
+            w,
+            sum,
+            w * sum
         );
 
-        if self.points[0].ch == &'S' {
-            println!(">>> S: {:?}", self.points);
-        }
-
-        self.points.len() * (x_side + y_side)
+        self.points.len() * sum
     }
 
     fn is_area_adjacent(&self, other: &Self) -> bool {
@@ -142,8 +146,8 @@ fn calculate_point_fence_length(
     world: &World,
     world_width: usize,
     world_height: usize,
-) -> usize {
-    let mut sum = 0;
+) -> Vec<BorderPoint> {
+    let mut borders = vec![];
 
     let x = position.x;
     let y = position.y;
@@ -151,25 +155,41 @@ fn calculate_point_fence_length(
 
     if y == 0 || &world[x][y - 1] != ch {
         // Left.
-        sum += 1;
+        borders.push(BorderPoint {
+            x,
+            y,
+            direction: Direction::Left,
+        });
     }
 
     if x == 0 || &world[x - 1][y] != ch {
         // Up.
-        sum += 1;
+        borders.push(BorderPoint {
+            x,
+            y,
+            direction: Direction::Up,
+        });
     }
 
     if y == world_width - 1 || &world[x][y + 1] != ch {
         // Right.
-        sum += 1;
+        borders.push(BorderPoint {
+            x,
+            y,
+            direction: Direction::Right,
+        });
     }
 
     if x == world_height - 1 || &world[x + 1][y] != ch {
         // Down.
-        sum += 1;
+        borders.push(BorderPoint {
+            x,
+            y,
+            direction: Direction::Down,
+        });
     }
 
-    sum
+    borders
 }
 
 fn generate_cost_map<'a>(world: &'a World) -> CostMap<'a> {
@@ -185,7 +205,7 @@ fn generate_cost_map<'a>(world: &'a World) -> CostMap<'a> {
             let perimeter = calculate_point_fence_length(&pos, &world, world_width, world_height);
 
             match tmp_map.iter_mut().find(|x| x.is_pos_adjacent(&pos)) {
-                Some(area) => area.add_point(pos, perimeter),
+                Some(area) => area.add_point(pos, &perimeter),
                 None => tmp_map.push(Area::new(pos, perimeter)),
             }
         }
@@ -221,16 +241,6 @@ fn generate_cost_map<'a>(world: &'a World) -> CostMap<'a> {
         }
     };
 
-    // for area in cost_map.iter() {
-    //     println!(
-    //         ">>> {:?}, {} * {} = {}",
-    //         area.points[0],
-    //         area.points.len(),
-    //         area.perimeter,
-    //         area.points.len() * area.perimeter
-    //     );
-    // }
-
     cost_map
 }
 
@@ -258,7 +268,10 @@ fn solve_part2(input: RawData) -> usize {
 mod test {
     use super::*;
 
-    const INPUT: RawData = r#"RRRRIICCFF
+    #[rustfmt::skip]
+    const INPUT: RawData = //
+"\
+RRRRIICCFF
 RRRRIICCCF
 VVRRRCCFFF
 VVRCCCJFFF
@@ -267,7 +280,7 @@ VVIVCCJJEE
 VVIIICJJEE
 MIIIIIJJEE
 MIIISIJEEE
-MMMISSJEEE"#;
+MMMISSJEEE";
 
     #[test]
     fn test_12_01() {
