@@ -4,17 +4,31 @@ use aoc2024::RawData;
 
 type World = Vec<Vec<char>>;
 
-type Targets = Vec<(usize, usize)>;
+type Paths<'a> = Vec<PathsFromPoint<'a>>;
 
+/// All paths toward reachable 9-points from the same point.
+type PathsFromPoint<'a> = HashSet<SinglePathFromPoint<'a>>;
+
+/// A single path.
+type SinglePathFromPoint<'a> = Vec<Position<'a>>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Direction {
     x: isize,
     y: isize,
 }
 
+#[derive(Clone, PartialEq, Eq, Hash)]
 struct Position<'a> {
     x: usize,
     y: usize,
     data: &'a char,
+}
+
+impl<'a> std::fmt::Debug for Position<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("({}, {})", self.x, self.y))
+    }
 }
 
 const INPUT: RawData = include_str!("../data/10.txt");
@@ -77,48 +91,46 @@ fn point_in_direction<'a>(
     })
 }
 
-fn count_route_at_point(
+fn count_route_at_point<'a>(
     x: usize,
     y: usize,
-    world: &World,
+    world: &'a World,
     world_width: usize,
     world_height: usize,
     step: usize,
-) -> Targets {
-    let mut targets = Targets::new();
+    current_path: &SinglePathFromPoint<'a>,
+) -> PathsFromPoint<'a> {
+    let mut collected_paths = PathsFromPoint::new();
     for direction in DIRECTIONS.iter() {
         let next_point = point_in_direction(world, x, y, world_width, world_height, &direction);
         if let Some(Position { x, y, data }) = next_point {
             if data == PATHS[step] {
-                if step == 9 {
-                    println!(">>> step {step} {x},{y}: {data}");
-                }
+                let mut p = current_path.clone();
+                p.push(Position { x, y, data });
                 // Is a route.
                 if step == PATHS.len() - 1 {
                     // Last step.
-                    targets.push((x, y));
+                    collected_paths.insert(p);
                 } else {
-                    // println!(">>> p >>>>> {step} {x},{y}: {data}");
-                    targets.extend(count_route_at_point(
+                    collected_paths.extend(count_route_at_point(
                         x,
                         y,
                         world,
                         world_width,
                         world_height,
                         step + 1,
+                        &p,
                     ));
                 }
             }
         }
     }
-    // println!(">>> count at {x},{y} ={count}");
-    targets
+
+    collected_paths
 }
 
-fn solve_part1(input: RawData) -> usize {
-    let mut targets = Targets::new();
-
-    let world = parse_world(input);
+fn generate_paths<'a>(world: &'a World) -> Paths<'a> {
+    let mut paths = Paths::new();
 
     let world_width = world[0].len();
     let world_height = world.len();
@@ -129,18 +141,77 @@ fn solve_part1(input: RawData) -> usize {
                 // Not the start point.
                 continue;
             }
-            targets.extend(count_route_at_point(
+            paths.push(count_route_at_point(
                 x,
                 y,
                 &world,
                 world_width,
                 world_height,
                 1,
+                &vec![Position {
+                    x,
+                    y,
+                    data: &world[x][y],
+                }],
             ));
         }
     }
 
-    targets.len()
+    // println!(">>> ALL PATHS:");
+    for target in paths.iter() {
+        // let start_pos = &target.iter().next().unwrap()[0];
+        // println!(">>> FROM {:?}", start_pos);
+        for (_idx, path) in target.iter().enumerate() {
+            if path.len() != PATHS.len() {
+                panic!("invalid path length {:?}", path);
+            }
+
+            if path
+                .iter()
+                .enumerate()
+                .any(|(idx, x)| (*x.data) as usize - 48 != idx)
+            {
+                panic!("invalid path {:?}", path,);
+            }
+
+            // println!(">>> {:?}: {}", start_pos, idx);
+            // println!("        {:?}", path);
+        }
+    }
+
+    paths
+}
+
+fn solve_part1(input: RawData) -> usize {
+    let world = parse_world(input);
+    let paths = generate_paths(&world);
+
+    paths
+        .into_iter()
+        .map(|x| {
+            let mut ends_record = vec![];
+            for path in x.iter() {
+                if ends_record.contains(path.last().unwrap()) {
+                    continue;
+                }
+                ends_record.push(path.last().unwrap().clone());
+            }
+
+            ends_record.len()
+        })
+        .reduce(|acc, x| acc + x)
+        .unwrap()
+}
+
+fn solve_part2(input: RawData) -> usize {
+    let world = parse_world(input);
+    let paths = generate_paths(&world);
+
+    paths
+        .into_iter()
+        .map(|x| x.len())
+        .reduce(|acc, x| acc + x)
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -163,8 +234,14 @@ mod test {
     fn test_10_01() {
         assert_eq!(solve_part1(INPUT), 36);
     }
+
+    #[test]
+    fn test_10_02() {
+        assert_eq!(solve_part2(INPUT), 81);
+    }
 }
 
 fn main() {
     println!("PART 1: {}", solve_part1(INPUT));
+    println!("PART 2: {}", solve_part2(INPUT));
 }
