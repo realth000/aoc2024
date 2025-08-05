@@ -20,8 +20,8 @@ cargo run -r --bin bin/dayxx.rs
 * √ Passed.
 * × Not passed.
 
-|  Date  |   Status  |
-| ------ | --------- |
+| Date   | Status    |
+|--------|-----------|
 | Day 01 | P1 √ P2 √ |
 | Day 02 | P1 √ P2 × |
 | Day 03 | P1 √ P2 √ |
