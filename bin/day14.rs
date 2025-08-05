@@ -65,22 +65,52 @@ impl Robot {
 }
 
 fn check_tree(robots: &Vec<Robot>) -> bool {
-    let mid = (WORLD_WIDTH as isize) / 2;
+    let has_robot = |robot: &Robot, row_offset: isize, col_offset: isize| -> bool {
+        let target_x = safe_add(robot.x, row_offset, WORLD_WIDTH);
+        let target_y = safe_add(robot.y, col_offset, WORLD_HEIGHT);
+        robots.iter().any(|x| x.x == target_x && x.y == target_y)
+    };
 
-    for x in 0..(WORLD_WIDTH as isize) {
-        for y in 0..(WORLD_HEIGHT as isize) {
-            if (x - mid).abs() <= y {
-                if !robots
-                    .iter()
-                    .any(|r| r.x == x as usize && r.y == y as usize)
-                {
-                    return false;
-                }
-            }
+    for robot in robots.iter() {
+        if robot.x < 2
+            || robot.x > WORLD_WIDTH - 1 - 2
+            || robot.y < 2
+            || robot.y > WORLD_HEIGHT - 1 - 2
+        {
+            continue;
+        }
+
+        // Check for tree shape.
+        //
+        // ---> X-axis
+        // |
+        // |
+        // V Y-axis
+        //
+        //    Current robot.
+        //    |
+        // ...#...
+        // ..###..
+        // .#####.
+        // ...#...
+        // ...#...
+        if
+        // 1st row.
+        !has_robot(robot, -1, 0) && !has_robot(robot, 1, 0) &&
+        // 2nd row
+        !has_robot(robot, -2, 1) && has_robot(robot, -1, 1) && has_robot(robot, 0, 1) && has_robot(robot, 1, 1) &&
+        // 3rd row
+        !has_robot(robot, -3, 2) && has_robot(robot, -2, 2) && has_robot(robot, -1, 2)&& has_robot(robot, 0, 2) && has_robot(robot, 1, 2) && has_robot(robot, 2, 2) && !has_robot(robot, 3, 2) &&
+        // 4th row
+        has_robot(robot, 0, 3) &&
+        // 5th row
+        has_robot(robot, 0, 4)
+        {
+            return true;
         }
     }
 
-    true
+    false
 }
 
 fn solve_part1(input: RawData, world_width: usize, world_height: usize) -> usize {
@@ -123,12 +153,11 @@ fn solve_part2(input: RawData) -> usize {
 
     let mut sec = 0;
 
-    while check_tree(&robots) {
+    while !check_tree(&robots) {
         for robot in robots.iter_mut() {
             robot.update();
         }
         sec += 1;
-        println!(">>> update!");
     }
     println!(">>> update!");
 

@@ -35,3 +35,4 @@ cargo run -r --bin bin/dayxx.rs
 | Day 11 | P1 √ P2 √ |
 | Day 12 | P1 √ P2 × |
 | Day 13 | P1 √ P2 × |
+| Day 14 | P1 √ P2 √ |
